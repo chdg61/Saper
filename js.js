@@ -65,10 +65,10 @@
 
         /**
          * Объект ячеек с расставленными пользователем минами
-         * @type {Ceil}
+         * @type {Ceil[]}
          * @private
          */
-        this._selectedMineCeil = {};
+        this._selectedMineCeil = [];
 
         /**
          * Число проставленных мин пользователя
@@ -77,6 +77,21 @@
          * @private
          */
         this._countSelectetMine = 0;
+
+        /**
+         * ID интервала таймера
+         *
+         * @type {boolean}
+         * @private
+         */
+        this._timerId = false;
+        /**
+         * начало с 1й секунды
+         *
+         * @type {number}
+         * @private
+         */
+        this._timeBegin = 1;
 
         /**
          * Ширина ячейки
@@ -112,17 +127,6 @@
 
         // заполняем поле
         this.drawPole();
-
-        this.timer_id = false; //  ID интервала таймера
-        this.time_begin = 1; // начало с 1й секунды
-
-
-
-
-
-
-
-
 
         /* вспомогательный метод роспечатки объёкта */
         function join_(obj,n){
@@ -264,195 +268,325 @@
         this.context.strokeRect(x,y,width,height);
         this.context.strokeStyle="#000";
     };
+    /**
+     * Создаём события кликов мышки
+     *
+     * @private
+     */
     Saper.prototype._createEvent = function(){
         "use strict";
 
         // обработка левого клика
         var this_ = this;
         this.canvas.onclick = function(event){
-            var ceil = this_.XY_col(event.pageX,event.pageY); // координаты ячейки
-            this_.openCl(ceil.y,ceil.x);
+            var row_and_cols_ceil = this_.getRowAndColsOnCoordinateClick(event.pageX,event.pageY); // координаты ячейки
+            this_.openCeil(row_and_cols_ceil.row,row_and_cols_ceil.col);
             //timer("on");
             return false;
         };
 
         // обработка правого клика
         this.canvas.oncontextmenu = function(event){
-            var ceil = this_.XY_col(event.pageX,event.pageY); // координаты ячейки
-            this_.setMine(ceil.y,ceil.x);
+            var row_and_cols_ceil = this_.getRowAndColsOnCoordinateClick(event.pageX,event.pageY); // координаты ячейки
+            this_.setMine(row_and_cols_ceil.row,row_and_cols_ceil.col);
             return false;
         };
     };
 
     /**
-     *  Обработка действий при нажатии левой клавиши, открытие полей
-     **/
-    Saper.prototype.openCl = function(y,x){
-
-        this.timer("on");
-
-        // при нажатии где уже стоит мина
-        if(this._selectedMineCeil[y][x] == "X"){
-            return;
-        }
-
-        // если вдруг....
-        if(this._obAllCeil[y][x] == "X"){
-            GameOver(); // :(
-        }
-
-        // если путое место вообще
-        if(this._obAllCeil[y][x] == "#"){
-            this._obAllCeil[y][x] = "@"; // отмечаем что открыто
-            this._selectedMineCeil[y][x] = "1"; // отмечаем что открыто и на пользовательской карте
-
-            // закрашиваем белый что открыто
-            this.context.clearRect((this.params.padding/2)+(x-1)*this._ceilWidth,(this.params.padding/2)+(y-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
-            this.context.fillStyle="#fff"; // белый
-            this.context.fillRect((this.params.padding/2)+(x-1)*this._ceilWidth,(this.params.padding/2)+(y-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
-            this.context.strokeStyle="#000";
-            this.context.strokeRect((this.params.padding/2)+(x-1)*this._ceilWidth,(this.params.padding/2)+(y-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
-
-            // находим соседние пустые и открываем их то же, рекусия функции
-            if(y != 1){
-                this.openCl(y-1,x);
-                if(x != 1){
-                    if(typeof this._obAllCeil[y-1][x-1] == "_numberInRow"){
-                        this.openCl(y-1,x-1);
-                    }
-                }
-                if(x != this.params.rows){
-                    if(typeof this._obAllCeil[y-1][parseInt(x,10)+1]=="_numberInRow"){
-                        this.openCl(y-1,parseInt(x,10)+1);
-                    }
-                }
-
-            }
-
-            if(y != this.params.cols){
-                this.openCl(parseInt(y,10)+1,x);
-                if(x!=1){
-                    if(typeof this._obAllCeil[parseInt(y,10)+1][x-1]=="_numberInRow"){
-                        this.openCl(parseInt(y,10)+1,x-1);
-                    }
-                }
-                if(x!=this.params.rows){
-                    if(typeof this._obAllCeil[parseInt(y,10)+1][parseInt(x,10)+1]=="_numberInRow"){
-                        this.openCl(parseInt(y,10)+1,parseInt(x,10)+1);
-                    }
-                }
-            }
-
-            if(x!=1){
-                this.openCl(y,x-1);
-            }
-            if(x!=this.params.rows){
-                this.openCl(y,parseInt(x,10)+1);
-            }
-        }
-
-        // если у нас цифра
-        if(typeof this._obAllCeil[y][x]=="_numberInRow"){
-
-            // Закрашимваем в белый
-            this.context.clearRect((this.params.padding/2)+(x-1)*this._ceilWidth,(this.params.padding/2)+(y-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
-            this.context.fillStyle="#fff";
-            this.context.fillRect((this.params.padding/2)+(x-1)*this._ceilWidth,(this.params.padding/2)+(y-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
-            this.context.strokeStyle="#000";
-            this.context.strokeRect((this.params.padding/2)+(x-1)*this._ceilWidth,(this.params.padding/2)+(y-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
-
-            // закрашиваем цифры
-            this.context.font = "bold 13px Sans";
-            this.context.textAlign = "center";
-            this.context.textBaseline = "middle";
-
-            switch(this._obAllCeil[y][x]){
-                case 1:
-                    this.context.fillStyle = "#222";
-                    break;
-                case 2:
-                    this.context.fillStyle = "#2f2";
-                    break;
-                case 3:
-                    this.context.fillStyle = "#f22";
-                    break;
-                case 4:
-                    this.context.fillStyle = "#22f";
-                    break;
-                case 5:
-                    this.context.fillStyle = "#220";
-                    break;
-                case 6:
-                    this.context.fillStyle = "#022";
-                    break;
-                case 7:
-                    this.context.fillStyle = "#202";
-                    break;
-                case 8:
-                    this.context.fillStyle = "#2H2";
-                    break;
-                default:
-                    this.context.fillStyle = "#2HH";
-                    break;
-            }
-            this.context.fillText(this._obAllCeil[y][x], (this.params.padding/2)+(x-1)*this._ceilWidth+this._ceilWidth/2, (this.params.padding/2)+(y-1)*this._ceilHeight+this._ceilHeight/2);
-            this._selectedMineCeil[y][x]="1"; // в пользовательском тоже ставим что открыл
-        }
-    };
-
-    /**
-     *  Ставим мины на поле
-     **/
-    Saper.prototype.setMine=function (y,x){
-
-        // ставит минут
-        if((typeof this._obAllCeil[y][x]=="_numberInRow" || this._obAllCeil[y][x]=="#" || this._obAllCeil[y][x]=="X") && this._selectedMineCeil[y][x]==0){
-            this._selectedMineCeil[y][x]="X";
-            this.context.beginPath();
-            this.context.fillStyle = "red";
-            this.context.arc((this.params.padding/2)+(x-1)*this._ceilWidth+this._ceilWidth/2, (this.params.padding/2)+(y-1)*this._ceilHeight+this._ceilHeight/2,this._ceilHeight/3,0,Math.PI*2,true);
-            this.context.fill();
-            this.mine_pole("+");
-            // убираем мину
-        }else if(this._selectedMineCeil[y][x]=="X" && this._obAllCeil[y][x]!="@"){
-            this._selectedMineCeil[y][x]=0;
-            this.context.clearRect((this.params.padding/2)+(x-1)*this._ceilWidth,(this.params.padding/2)+(y-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
-            this.context.fillStyle="#E9E9E9";
-            this.context.fillRect((this.params.padding/2)+(x-1)*this._ceilWidth,(this.params.padding/2)+(y-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
-            this.context.strokeStyle="#000";
-            this.context.strokeRect((this.params.padding/2)+(x-1)*this._ceilWidth,(this.params.padding/2)+(y-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
-            this.mine_pole("-");
-        }
-    };
-
-    /**
-     *  возвращает координаты (номера) ячейки по x и y
-     **/
-    Saper.prototype.XY_col = function (x,y){
+     * Определяет номер столбца и номер строки ячейки по x и y координатам
+     *
+     * @param {number} x
+     * @param {number} y
+     * @returns {{col: number, row: number}}
+     */
+    Saper.prototype.getRowAndColsOnCoordinateClick = function(x,y){
         x = x - this.context.canvas.offsetLeft - this.params.padding/2;
         y = y - this.context.canvas.offsetTop - this.params.padding/2;
         return {
-            "x": (Math.ceil(x/this._ceilWidth) > this.params.cols? 0 : Math.ceil(x/this._ceilWidth)),
-            "y": (Math.ceil(y/this._ceilHeight) > this.params.rows? 0 :Math.ceil(y/this._ceilHeight))
+            "col": (Math.ceil(x/this._ceilWidth) > this.params.cols? 0 : Math.ceil(x/this._ceilWidth)),
+            "row": (Math.ceil(y/this._ceilHeight) > this.params.rows? 0 :Math.ceil(y/this._ceilHeight))
         };
+    };
+    /**
+     * Обработка действий при нажатии левой клавиши, открытие полей
+     *
+     * @param {number} numberRow
+     * @param {number} numberCeil
+     */
+    Saper.prototype.openCeil = function(numberRow,numberCeil){
+        var obRow,obCeil,listAroundCeil,countMine;
+        var this_ = this;
+
+        numberRow = parseInt(numberRow,10) || 0;
+        numberCeil = parseInt(numberCeil,10) || 0;
+        if(this._obRows[numberRow]){
+            obRow = this._obRows[numberRow];
+            obCeil = obRow.getCeil(numberCeil);
+            if(obCeil){
+                this._timerStart();
+                // если на ячейки стоит что мина
+                if(obCeil.isUserSelectMine()){
+                    return false;
+                }
+                // если ячейка является миной
+                if(obCeil.isMine()){
+                    this.gameOver();
+                }
+
+                listAroundCeil = this._findAroundCeil(obCeil);
+                listAroundCeil.forEach(function(innerCeil,index){
+                    "use strict";
+                    if(innerCeil.isMine()){
+                        countMine++;
+                    }
+                });
+
+                obCeil.setCountMineAround(countMine);
+                obCeil.open();
+
+
+                // если ноль мин в ячейки
+                if(countMine === 0){
+                    this._drawOpenCeilEmpty(obCeil);
+                    listAroundCeil.forEach(function(innerCeil,index){
+                        "use strict";
+                        if(!innerCeil.isMine() && !innerCeil.isUserSelectMine() && !innerCeil.isOpen()){
+                            this_.openCeil(innerCeil.getRow().getNumber(),innerCeil.getNumberInRow());
+                        }
+                    });
+                }else{
+                    this._drawOpenCeil(obCeil);
+                }
+            }
+        }
+
+
+
+
+
+        // если у нас цифра
+        if(typeof this._obAllCeil[numberRow][numberCeil]=="_numberInRow"){
+
+
+        }
+    };
+    /**
+     * Находим ячейки рядом с текущей
+     *
+     * @param {Ceil} obCeil
+     * @returns {Ceil[]}
+     * @private
+     */
+    Saper.prototype._findAroundCeil = function(obCeil){
+        "use strict";
+        var listCeil = [];
+        var _ceil,_row, countMine = 0;
+
+        // смотрим левую ячейку
+        if(obCeil.getNumberInRow() > 0){
+            _ceil = obCeil.getRow().getCeil(obCeil.getNumberInRow() -1);
+            if(_ceil){
+                listCeil.push(_ceil);
+            }
+        }
+        // смотрим правую ячейку
+        _ceil = obCeil.getRow().getCeil(obCeil.getNumberInRow() + 1);
+        if(_ceil){
+            listCeil.push(_ceil);
+        }
+
+        // смотрим верхний ряд
+        if(obCeil.getRow().getNumber() > 0){
+            _row = this._obRows[obCeil.getRow().getNumber() - 1];
+            if(_row){
+                // смотрим левую верхнюю ячейку
+                if(obCeil.getNumberInRow() > 0){
+                    _ceil = _row.getCeil(obCeil.getNumberInRow() - 1);
+                    if(_ceil){
+                        listCeil.push(_ceil);
+                    }
+                }
+                // смотрим среднюю верхнюю ячейку
+                _ceil = _row.getCeil(obCeil.getNumberInRow());
+                if(_ceil){
+                    listCeil.push(_ceil);
+                }
+                // смотрим правую верхнюю ячейку
+                _ceil = _row.getCeil(obCeil.getNumberInRow() + 1);
+                if(_ceil){
+                    listCeil.push(_ceil);
+                }
+            }
+        }
+        // смотрим нижний ряд
+        _row = this._obRows[obCeil.getRow().getNumber() + 1];
+        if(_row){
+            // смотрим левую нижнюю ячейку
+            if(obCeil.getNumberInRow() > 0){
+                _ceil = _row.getCeil(obCeil.getNumberInRow() - 1);
+                if(_ceil){
+                    listCeil.push(_ceil);
+                }
+            }
+            // смотрим среднюю нижнюю ячейку
+            _ceil = _row.getCeil(obCeil.getNumberInRow());
+            if(_ceil){
+                listCeil.push(_ceil);
+            }
+            // смотрим правую нижнюю ячейку
+            _ceil = _row.getCeil(obCeil.getNumberInRow() + 1);
+            if(_ceil){
+                listCeil.push(_ceil);
+            }
+        }
+
+        return listCeil;
+    };
+    /**
+     * Закрашиваем пустую ячейку
+     *
+     * @param {Ceil} obCeil
+     * @private
+     */
+    Saper.prototype._drawOpenCeilEmpty = function(obCeil){
+        "use strict";
+        // закрашиваем белый что открыто
+        this.context.clearRect((this.params.padding/2) + (obCeil.getNumberInRow() - 1)*this._ceilWidth, (this.params.padding/2) + (obCeil.getRow().getNumber() - 1)*this._ceilHeight, this._ceilWidth, this._ceilHeight);
+        this.context.fillStyle = "#fff"; // белый
+        this.context.fillRect((this.params.padding/2) + (obCeil.getNumberInRow() - 1)*this._ceilWidth, (this.params.padding/2) + (obCeil.getRow().getNumber() - 1)*this._ceilHeight, this._ceilWidth, this._ceilHeight);
+        this.context.strokeStyle = "#000";
+        this.context.strokeRect((this.params.padding/2) + (obCeil.getNumberInRow() - 1)*this._ceilWidth, (this.params.padding/2) + (obCeil.getRow().getNumber() - 1)*this._ceilHeight, this._ceilWidth, this._ceilHeight);
+    };
+    /**
+     *  Закрашиваем ячейку с цифрой
+     *
+     * @param {Ceil} obCeil
+     * @private
+     */
+    Saper.prototype._drawOpenCeil = function(obCeil){
+        "use strict";
+        // Закрашимваем в белый
+        this.context.clearRect((this.params.padding/2)+(obCeil.getNumberInRow()-1)*this._ceilWidth,(this.params.padding/2)+(obCeil.getRow().getNumber()-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
+        this.context.fillStyle="#fff";
+        this.context.fillRect((this.params.padding/2)+(obCeil.getNumberInRow()-1)*this._ceilWidth,(this.params.padding/2)+(obCeil.getRow().getNumber()-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
+        this.context.strokeStyle="#000";
+        this.context.strokeRect((this.params.padding/2)+(obCeil.getNumberInRow()-1)*this._ceilWidth,(this.params.padding/2)+(obCeil.getRow().getNumber()-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
+
+        // закрашиваем цифры
+        this.context.font = "bold 13px Sans";
+        this.context.textAlign = "center";
+        this.context.textBaseline = "middle";
+
+        switch(obCeil.getCountMineAround()){
+            case 1:
+                this.context.fillStyle = "#222";
+                break;
+            case 2:
+                this.context.fillStyle = "#2f2";
+                break;
+            case 3:
+                this.context.fillStyle = "#f22";
+                break;
+            case 4:
+                this.context.fillStyle = "#22f";
+                break;
+            case 5:
+                this.context.fillStyle = "#220";
+                break;
+            case 6:
+                this.context.fillStyle = "#022";
+                break;
+            case 7:
+                this.context.fillStyle = "#202";
+                break;
+            case 8:
+                this.context.fillStyle = "#2H2";
+                break;
+            default:
+                this.context.fillStyle = "#2HH";
+                break;
+        }
+        this.context.fillText(obCeil.getCountMineAround(), (this.params.padding/2)+(obCeil.getNumberInRow()-1)*this._ceilWidth+this._ceilWidth/2, (this.params.padding/2)+(obCeil.getRow().getNumber()-1)*this._ceilHeight+this._ceilHeight/2);
     };
 
     /**
-     *  учитывает число проставленных мин,Ю для победы
-     **/
-    Saper.prototype.mine_pole = function(pm){
-        if(pm == "+"){
+     * Ставим мины на поле
+     *
+     * @param {number} numberRow
+     * @param {number} numberCeil
+     */
+    Saper.prototype.setMine = function(numberRow,numberCeil){
+        var obRow,obCeil;
+        var this_ = this;
+
+        numberRow = parseInt(numberRow,10) || 0;
+        numberCeil = parseInt(numberCeil,10) || 0;
+        if(this._obRows[numberRow]){
+            obRow = this._obRows[numberRow];
+            obCeil = obRow.getCeil(numberCeil);
+            if(obCeil && !obCeil.isOpen()){
+                // ставит минут
+                if(!obCeil.isUserSelectMine()){
+                    obCeil.setUserSelectMine(true);
+                    this._drawOnFlagMine(obCeil);
+                    this.mine_pole(true);
+                // убираем мину
+                }else{
+                    obCeil.setUserSelectMine(false);
+                    this._drawOffFlagMine(obCeil);
+                    this.mine_pole(false);
+                }
+            }
+        }
+    };
+    /**
+     * Ставим крыюик мины пользователя
+     *
+     * @param {Ceil} obCeil
+     * @private
+     */
+    Saper.prototype._drawOnFlagMine = function(obCeil){
+        "use strict";
+        this.context.beginPath();
+        this.context.fillStyle = "red";
+        this.context.arc((this.params.padding/2)+(obCeil.getNumberInRow()-1)*this._ceilWidth+this._ceilWidth/2, (this.params.padding/2)+(obCeil.getRow().getNumber()-1)*this._ceilHeight+this._ceilHeight/2,this._ceilHeight/3,0,Math.PI*2,true);
+        this.context.fill();
+    };
+    /**
+     * Убираем крыюик мины пользователя
+     *
+     * @param {Ceil} obCeil
+     * @private
+     */
+    Saper.prototype._drawOffFlagMine = function(obCeil){
+        "use strict";
+        this.context.clearRect((this.params.padding/2)+(obCeil.getNumberInRow()-1)*this._ceilWidth,(this.params.padding/2)+(obCeil.getRow().getNumber()-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
+        this.context.fillStyle="#E9E9E9";
+        this.context.fillRect((this.params.padding/2)+(obCeil.getNumberInRow()-1)*this._ceilWidth,(this.params.padding/2)+(obCeil.getRow().getNumber()-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
+        this.context.strokeStyle="#000";
+        this.context.strokeRect((this.params.padding/2)+(obCeil.getNumberInRow()-1)*this._ceilWidth,(this.params.padding/2)+(obCeil.getRow().getNumber()-1)*this._ceilHeight,this._ceilWidth,this._ceilHeight);
+    };
+    /**
+     * учитывает число проставленных мин, для победы
+     *
+     * @param {boolean} isMine
+     */
+    Saper.prototype.mine_pole = function(isMine){
+        if(isMine === true){
             this._countSelectetMine++;
             this.document.getElementById("mine_pole").value = ((this._countSelectetMine < this.params.mine_count)?"0":"") + this._countSelectetMine+"/"+this.params.mine_count;
         }
-        if(pm == "-"){
+        if(isMine === false){
             this._countSelectetMine--;
             this.document.getElementById("mine_pole").value=((this._countSelectetMine < this.params.mine_count)?"0":"") + this._countSelectetMine+"/"+this.params.mine_count;
         }
 
         // проверям кол-во проставленных и всего и проверяем на правильность
-        if(this._countSelectetMine == this.params.mine_count){
+        if(this._countSelectetMine === this.params.mine_count){
+            // TODO: Проверка на правильность надо доделать....
             var n=0;
+
             for(var y in this._selectedMineCeil){
                 for(var x in this._selectedMineCeil[y]){
                     if(this._selectedMineCeil[y][x]=="X" && this._obAllCeil[y][x]=="X"){
@@ -464,10 +598,9 @@
                 this.winner();
             }
         }
-    }
-
-    /* проиграл */
-    Saper.prototype.GameOver = function(){
+    };
+    Saper.prototype.gameOver = function(){
+        "use strict";
         this.context.fillStyle = "rgba(255,0,0,0.5)";
         this.context.fillRect((this.params.padding/2),(this.params.padding/2),this.context.canvas.width-this.params.padding, this.context.canvas.height-this.params.padding);
         this.context.font = "bold 26px Sans";
@@ -477,11 +610,10 @@
         this.context.fillText("Game Over",this.context.canvas.width/2, this.context.canvas.height/2);
         this.context.canvas.onclick=function(){return false;}
         this.context.canvas.oncontextmenu=function(){return false;}
-        this.timer("off");
+        this._timerStop();
     };
-
-    /* выграл */
     Saper.prototype.winner = function(){
+        "use strict";
         this.context.fillStyle = "rgba(0,255,0,0.5)";
         this.context.fillRect((this.params.padding/2),(this.params.padding/2),this.context.canvas.width-this.params.padding, this.context.canvas.height-this.params.padding);
         this.context.font = "bold 26px Sans";
@@ -491,37 +623,63 @@
         this.context.fillText("Победа!!!!",this.context.canvas.width/2, this.context.canvas.height/2);
         this.context.canvas.onclick=function(){return false;}
         this.context.canvas.oncontextmenu=function(){return false;}
-        this.timer("off");
+        this._timerStop();
     };
-
-
-    /* включаем и выключаем таймер */
-    Saper.prototype.timer = function(onoff){
-        var this_ = this;
-        if(onoff == "on" && !this.timer_id && this.time_begin==1){
-            this.timer_id = setInterval(function(){
-                document.getElementById("time").value=(function (){
-                    var t = this_.time_begin.toString();
-                    // формирует цифры в 000
-                    for(var i=0; i < (3-this_.time_begin.toString().length); i++){
-                        t="0".concat(t);
-                    }
-                    return t;
-                })().toString();
-                this.time_begin++;
+    /**
+     * Включает таймер игры
+     *
+     * @private
+     */
+    Saper.prototype._timerStart = function(){
+        "use strict";
+        if(this._timerId === false && this._timeBegin === 1){
+            var this_ = this;
+            this._timerId = setInterval(function(){
+                document.getElementById("time").value = this_._formatTime();
+                this_._timeBegin++;
             },1000);
-        }else if(onoff=="off" && this.timer_id){
-            clearInterval(this.timer_id);
         }
     };
+    /**
+     * Выключает таймер игры
+     * @private
+     */
+    Saper.prototype._timerStop = function(){
+        "use strict";
+        if(this._timerId !== false){
+            clearInterval(this._timerId);
+        }
+    };
+    /**
+     * Формирует время из числа в строку из 3х символов
+     *
+     * @returns {string}
+     * @private
+     */
+    Saper.prototype._formatTime = function(){
+        "use strict";
+        var time = this._timeBegin.toString();
+        // формирует цифры в 000
+        for(var i = 0; i < (3 - this._timeBegin.toString().length); i++){
+            time = "0".concat(time);
+        }
+        return time.toString();
+    };
 
+    /**
+     * Класс строки
+     *
+     * @param {number} number_row
+     * @constructor
+     */
     function Row(number_row){
         "use strict";
 
         /**
-         * @type {Number|number}
+         * @type {number}
+         * @private
          */
-        this._numberInRow = parseInt(number_row,10) || 0;
+        this._number = parseInt(number_row,10) || 0;
 
         /**
          * @type {Ceil}
@@ -529,6 +687,13 @@
          */
         this._obCeilList = {};
     }
+
+    /**
+     * Создаёт ячейку в строку
+     *
+     * @param {number} number_ceil
+     * @returns {Ceil}
+     */
     Row.prototype.createCeil = function(number_ceil){
         "use strict";
         number_ceil = parseInt(number_ceil,10);
@@ -540,6 +705,12 @@
         this._obCeilList[number_ceil].setRow(this);
         return this._obCeilList[number_ceil];
     };
+    /**
+     * Получает объект ячейки в строке
+     *
+     * @param {number} number_ceil
+     * @returns {Ceil}
+     */
     Row.prototype.getCeil = function(number_ceil){
         "use strict";
         number_ceil = parseInt(number_ceil,10) || 0;
@@ -549,16 +720,34 @@
 
         return false;
     };
+    /**
+     * Возвращает объект списка ячеек
+     *
+     * @returns {Ceil}
+     */
     Row.prototype.getListCeil = function(){
         "use strict";
         return this._obCeilList;
     };
+    /**
+     * @returns {number}
+     */
+    Row.prototype.getNumber = function(){
+        "use strict";
+        return (parseInt(this._number,10) || 0);
+    };
 
+    /**
+     * Объект ячейки
+     *
+     * @param {number} number_ceil_in_row
+     * @constructor
+     */
     function Ceil(number_ceil_in_row){
         "use strict";
 
         /**
-         * @type {Number|number}
+         * @type {number}
          * @private
          */
         this._numberInRow = parseInt(number_ceil_in_row,10) || 0;
@@ -589,42 +778,129 @@
          */
         this._numberMineAround = 0;
 
-        this._checkMine = false;
+        /**
+         * @type {boolean}
+         * @private
+         */
+        this._userSelectIsMine = false;
 
         /**
          * @type {Row}
          * @private
          */
         this._obRow = {};
+        /**
+         * @type {number}
+         * @private
+         */
+        this._counMineAround = 0;
     }
+    /**
+     * Задаём, что ячефка является миной
+     *
+     * @param {boolean} $is_mine
+     */
     Ceil.prototype.setMine = function($is_mine){
         "use strict";
         this._isMine = ($is_mine === true);
     };
+    /**
+     * Проверка является ли ячейка миной
+     *
+     * @returns {boolean}
+     */
+    Ceil.prototype.isMine = function(){
+        "use strict";
+        return this._isMine;
+    };
+    /**
+     * Задаём строчку ячейки
+     * @param {Row} obRow
+     */
     Ceil.prototype.setRow = function(obRow){
         "use strict";
         this._obRow = obRow;
     };
+    /**
+     * @returns {Row}
+     */
+    Ceil.prototype.getRow = function(){
+        "use strict";
+        return this._obRow;
+    };
+    /**
+     * Задать номер ячейки среди всех ячеек вообще
+     *
+     * @param {number} number_ceil
+     */
     Ceil.prototype.setNumber = function(number_ceil){
         "use strict";
         this._numberOnAllCeil = parseInt(number_ceil,10) || 0;
     };
+    /**
+     * @returns {number}
+     */
     Ceil.prototype.getNumber = function(){
         "use strict";
         return this._numberOnAllCeil;
     };
+    /**
+     * Получить номер ячейки в строке
+     *
+     * @returns {number}
+     */
     Ceil.prototype.getNumberInRow = function(){
         "use strict";
         return this._numberInRow;
     };
+    /**
+     * Открыть ячейку
+     */
     Ceil.prototype.open = function(){
         "use strict";
         this._isOpen = true;
     };
-    Ceil.prototype.selectMine = function(is_mine){
+    /**
+     * @returns {boolean}
+     */
+    Ceil.prototype.isOpen = function(){
+        "use strict";
+        return this._isOpen;
+    };
+    /**
+     * Отметить что пользвоатель поставил сюда мину
+     *
+     * @param {boolean} is_mine
+     */
+    Ceil.prototype.setUserSelectMine = function(is_mine){
         "use strict";
         if(this._isOpen === false){
-            this._checkMine = (is_mine === true);
+            this._userSelectIsMine = (is_mine === true);
         }
-    }
+    };
+    /**
+     * Првоеряка поставил ли пользователь мину сюда или нет
+     *
+     * @returns {boolean}
+     */
+    Ceil.prototype.isUserSelectMine = function(){
+        "use strict";
+        return this._userSelectIsMine;
+    };
+    /**
+     * Задаём кол-во мин в ячейки
+     *
+     * @param {number} count_mine
+     */
+    Ceil.prototype.setCountMineAround = function(count_mine){
+        "use strict";
+        this._counMineAround = parseInt(count_mine,10) || 0;
+    };
+    /**
+     * @returns {number}
+     */
+    Ceil.prototype.getCountMineAround = function(){
+        "use strict";
+        return this._counMineAround;
+    };
 })(window);
