@@ -331,7 +331,7 @@
                 }
                 // если ячейка является миной
                 if(obCeil.isMine()){
-                    this.gameOver();
+                    this._gameOver();
                 }
 
                 listAroundCeil = this._findAroundCeil(obCeil);
@@ -530,12 +530,14 @@
                 if(!obCeil.isUserSelectMine()){
                     obCeil.setUserSelectMine(true);
                     this._drawOnFlagMine(obCeil);
-                    this.mine_pole(true);
+                    this._addSelectedMine(obCeil);
+                    this._checkSelectedMine(true);
                 // убираем мину
                 }else{
                     obCeil.setUserSelectMine(false);
                     this._drawOffFlagMine(obCeil);
-                    this.mine_pole(false);
+                    this._deleteSelectedMine(obCeil);
+                    this._checkSelectedMine(false);
                 }
             }
         }
@@ -572,7 +574,10 @@
      *
      * @param {boolean} isMine
      */
-    Saper.prototype.mine_pole = function(isMine){
+    Saper.prototype._checkSelectedMine = function(isMine){
+        "use strict";
+        var _countRulesMine = 0;
+
         if(isMine === true){
             this._countSelectetMine++;
             this.document.getElementById("mine_pole").value = ((this._countSelectetMine < this.params.mine_count)?"0":"") + this._countSelectetMine+"/"+this.params.mine_count;
@@ -584,22 +589,44 @@
 
         // проверям кол-во проставленных и всего и проверяем на правильность
         if(this._countSelectetMine === this.params.mine_count){
-            // TODO: Проверка на правильность надо доделать....
-            var n=0;
-
-            for(var y in this._selectedMineCeil){
-                for(var x in this._selectedMineCeil[y]){
-                    if(this._selectedMineCeil[y][x]=="X" && this._obAllCeil[y][x]=="X"){
-                        n++;
-                    }
+            this._selectedMineCeil.forEach(function(obCeil){
+                "use strict";
+                if(obCeil.isMine() && obCeil.isUserSelectMine()){
+                    _countRulesMine++;
                 }
-            }
-            if(n == this.params.mine_count){
-                this.winner();
+            });
+
+            if(_countRulesMine === this.params.mine_count){
+                this._winner();
             }
         }
     };
-    Saper.prototype.gameOver = function(){
+    /**
+     * Добавляем ячейку в выбранные пользователем
+     *
+     * @param {Ceil} obCeil
+     * @private
+     */
+    Saper.prototype._addSelectedMine = function(obCeil){
+        "use strict";
+        this._selectedMineCeil.push(obCeil);
+    };
+    /**
+     * Удаляем ячейку из выбранных пользователем
+     *
+     * @param {Ceil} obCeil
+     * @private
+     */
+    Saper.prototype._deleteSelectedMine = function(obCeil){
+        "use strict";
+        for(var i = 0;i < this._selectedMineCeil.length;i++){
+            if(this._selectedMineCeil[i] === obCeil){
+                this._selectedMineCeil.slice(0,i).concat(this._selectedMineCeil.slice(i+1))
+                return;
+            }
+        }
+    };
+    Saper.prototype._gameOver = function(){
         "use strict";
         this.context.fillStyle = "rgba(255,0,0,0.5)";
         this.context.fillRect((this.params.padding/2),(this.params.padding/2),this.context.canvas.width-this.params.padding, this.context.canvas.height-this.params.padding);
@@ -612,7 +639,7 @@
         this.context.canvas.oncontextmenu=function(){return false;}
         this._timerStop();
     };
-    Saper.prototype.winner = function(){
+    Saper.prototype._winner = function(){
         "use strict";
         this.context.fillStyle = "rgba(0,255,0,0.5)";
         this.context.fillRect((this.params.padding/2),(this.params.padding/2),this.context.canvas.width-this.params.padding, this.context.canvas.height-this.params.padding);
