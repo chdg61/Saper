@@ -13,8 +13,8 @@
         "use strict";
 
         var saper = new Saper("saper",{
-            "width":canvas.width,
-            "height":canvas.height
+            "width":320,
+            "height":320
         });
     };
 
@@ -55,10 +55,10 @@
         /**
          * Список объектов строк
          *
-         * @type {Row}
+         * @type {Row[]}
          * @private
          */
-        this._obRows = {};
+        this._arRows = [];
 
         // объект списка ячеек, разделённый на строки и столбцы
         this._obAllCeil = {};
@@ -128,6 +128,8 @@
         // заполняем поле
         this.drawPole();
 
+        this._createEvent();
+
         /* вспомогательный метод роспечатки объёкта */
         function join_(obj,n){
             if(n!="|"){
@@ -155,10 +157,10 @@
 
         // создаём объекты строк
         for(numberRow = 0; numberRow < this.params.rows; numberRow++){
-            this._obRows[numberRow] = new Row(numberRow);
+            this._arRows[numberRow] = new Row(numberRow);
             // пробегаем по строкам и создаём объекты ячеек
             for(numberCeil = 0; numberCeil < this.params.cols; numberCeil++){
-                obCeil = this._obRows[numberRow].createCeil(numberCeil);
+                obCeil = this._arRows[numberRow].createCeil(numberCeil);
                 obCeil.setNumber(((numberRow - 1)*this.params.cols) + numberCeil);
 
                 if(this._arNumbersFieldForMine.indexOf(obCeil.getNumber()) !== -1){
@@ -183,8 +185,8 @@
         this.context.fillStyle = "#E9E9E9";
         this.context.fillRect(5,5,this.canvas.width-10, this.canvas.height-10);
 
-        for(var numberRow in this._obRows){
-            var _listCeil = this._obRows[numberRow].getListCeil();
+        for(var numberRow=0;numberRow < this._arRows.length; numberRow++){
+            var _listCeil = this._arRows[numberRow].getListCeil();
             for(var numberCeil in _listCeil){
                 this._drawCeil(
                     (this.params.padding / 2) + numberRow * this._ceilWidth,
@@ -194,7 +196,6 @@
                 );
             }
         }
-
     };
 
     /**
@@ -320,8 +321,8 @@
 
         numberRow = parseInt(numberRow,10) || 0;
         numberCeil = parseInt(numberCeil,10) || 0;
-        if(this._obRows[numberRow]){
-            obRow = this._obRows[numberRow];
+        if(this._arRows[numberRow]){
+            obRow = this._arRows[numberRow];
             obCeil = obRow.getCeil(numberCeil);
             if(obCeil){
                 this._timerStart();
@@ -360,16 +361,6 @@
                 }
             }
         }
-
-
-
-
-
-        // если у нас цифра
-        if(typeof this._obAllCeil[numberRow][numberCeil]=="_numberInRow"){
-
-
-        }
     };
     /**
      * Находим ячейки рядом с текущей
@@ -398,7 +389,7 @@
 
         // смотрим верхний ряд
         if(obCeil.getRow().getNumber() > 0){
-            _row = this._obRows[obCeil.getRow().getNumber() - 1];
+            _row = this._arRows[obCeil.getRow().getNumber() - 1];
             if(_row){
                 // смотрим левую верхнюю ячейку
                 if(obCeil.getNumberInRow() > 0){
@@ -420,7 +411,7 @@
             }
         }
         // смотрим нижний ряд
-        _row = this._obRows[obCeil.getRow().getNumber() + 1];
+        _row = this._arRows[obCeil.getRow().getNumber() + 1];
         if(_row){
             // смотрим левую нижнюю ячейку
             if(obCeil.getNumberInRow() > 0){
@@ -522,8 +513,8 @@
 
         numberRow = parseInt(numberRow,10) || 0;
         numberCeil = parseInt(numberCeil,10) || 0;
-        if(this._obRows[numberRow]){
-            obRow = this._obRows[numberRow];
+        if(this._arRows[numberRow]){
+            obRow = this._arRows[numberRow];
             obCeil = obRow.getCeil(numberCeil);
             if(obCeil && !obCeil.isOpen()){
                 // ставит минут
@@ -580,11 +571,11 @@
 
         if(isMine === true){
             this._countSelectetMine++;
-            this.document.getElementById("mine_pole").value = ((this._countSelectetMine < this.params.mine_count)?"0":"") + this._countSelectetMine+"/"+this.params.mine_count;
+            document.getElementById("mine_pole").value = ((this._countSelectetMine < this.params.mine_count)?"0":"") + this._countSelectetMine+"/"+this.params.mine_count;
         }
         if(isMine === false){
             this._countSelectetMine--;
-            this.document.getElementById("mine_pole").value=((this._countSelectetMine < this.params.mine_count)?"0":"") + this._countSelectetMine+"/"+this.params.mine_count;
+            document.getElementById("mine_pole").value=((this._countSelectetMine < this.params.mine_count)?"0":"") + this._countSelectetMine+"/"+this.params.mine_count;
         }
 
         // проверям кол-во проставленных и всего и проверяем на правильность
@@ -723,10 +714,10 @@
      */
     Row.prototype.createCeil = function(number_ceil){
         "use strict";
-        number_ceil = parseInt(number_ceil,10);
-        if(number_ceil<=0){
-            return false;
-        }
+        number_ceil = parseInt(number_ceil,10) || 0;
+//        if(number_ceil<=0){
+//            return false;
+//        }
 
         this._obCeilList[number_ceil] = new Ceil(number_ceil);
         this._obCeilList[number_ceil].setRow(this);
